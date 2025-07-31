@@ -451,60 +451,92 @@
       document.getElementById("totalCarrito").innerText = total.toFixed(2);
     }
 
-    // Confirmar la compra (Enviar pedido)
-    document.getElementById("confirmarCompra").onclick = async function () {
-      if (!usuarioActual) return alert("Inicia sesión para confirmar tu compra");
-      if (carrito.length === 0) return alert("Tu carrito está vacío");
+    // Confirmar la compra (Enviar pedido)// Confirmar la compra (Redirigir directamente a WhatsApp)
+document.getElementById("confirmarCompra").onclick = function() {
+  if (!usuarioActual) {
+    alert("Inicia sesión para confirmar tu compra");
+    return;
+  }
+  
+  if (carrito.length === 0) {
+    alert("Tu carrito está vacío");
+    return;
+  }
 
-      const nombreCliente = document.getElementById("nombreCliente").value.trim();
-      if (!nombreCliente) return alert("Escribe tu nombre para continuar");
+  const nombreCliente = document.getElementById("nombreCliente").value.trim();
+  if (!nombreCliente) {
+    alert("Escribe tu nombre para continuar");
+    return;
+  }
 
-      const total = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-
-      const pedido = {
+  // Calcular el total
+  const total = carrito.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
+  
+  // Configuración de WhatsApp
+  const numeroAdmin = "59178352333"; // Tu número de WhatsApp con código de país
+  
+  // Construir mensaje detallado
+  let mensaje = `*Nuevo Pedido* 🛒\n\n`;
+  mensaje += `*Cliente:* ${nombreCliente}\n\n`;
+  mensaje += `*Detalles del pedido:*\n`;
+  
+  carrito.forEach(item => {
+    mensaje += `- ${item.nombre} x ${item.cantidad} = Bs ${(item.precio * item.cantidad).toFixed(2)}\n`;
+  });
+  
+  mensaje += `\n*Total a pagar:* Bs ${total.toFixed(2)}\n\n`;
+  mensaje += `¿Podrías confirmar este pedido por favor?`;
+  
+  // Generar enlace de WhatsApp
+  const whatsappLink = `https://wa.me/${numeroAdmin}?text=${encodeURIComponent(mensaje)}`;
+  
+  // Opcional: Intentar guardar en la base de datos (en segundo plano)
+  // Esto se ejecuta pero no afecta el flujo principal
+  try {
+    fetch("guardar_pedido.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productos: carrito,
         total: total,
-        nombreCliente: nombreCliente,
-        productos: carrito
-      };
-
-      const confirmBtn = this; // Referencia al botón que fue clickeado
-      const originalText = confirmBtn.textContent; // Guardar el texto original del botón
-      confirmBtn.disabled = true; // Deshabilitar el botón
-      confirmBtn.textContent = "Procesando..."; // Mostrar estado de procesamiento
-
-      const res = await fetch("guardar_pedido.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pedido)
-      });
-
-      const json = await res.json();
-
-      // Restablecer el estado del botón, sin importar el éxito o el fracaso
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = originalText;
-
-      if (json.success) {
-        alert("¡Pedido realizado con éxito! Serás redirigido a WhatsApp para confirmar.");
-        carrito = [];
-        renderizarCarrito();
-        document.getElementById("nombreCliente").value = "";
-        window.location.href = json.whatsappLink;
-      } else {
-        alert("Error al guardar pedido: " + json.error + ". Por favor, inténtalo de nuevo."); // Mensaje de error más detallado
+        nombreCliente: nombreCliente
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) {
+        console.error("Error al guardar pedido (modo silencioso):", data.error);
       }
-    };
+    })
+    .catch(error => {
+      console.error("Error de conexión (modo silencioso):", error);
+    });
+  } catch (error) {
+    console.error("Error al intentar guardar pedido:", error);
+  }
+  
+  // Limpiar carrito
+  carrito = [];
+  renderizarCarrito();
+  document.getElementById("nombreCliente").value = "";
+  
+  // Redirigir a WhatsApp (abrir en nueva pestaña)
+  window.open(whatsappLink, '_blank');
+  
+  // Opcional: Mostrar mensaje de confirmación
+  alert("Serás redirigido a WhatsApp para confirmar tu pedido");
+};
 
-    // Al cargar la página, verificar si hay una sesión activa
-    window.onload = function () {
-      const storedUser = localStorage.getItem("usuarioActual");
-      if (storedUser) {
-        usuarioActual = JSON.parse(storedUser);
-        mostrarContenido();
-      } else {
-        mostrarLogin();
-      }
-    };
+// Mantener el resto del código igual (carga de página, etc.)
+window.onload = function() {
+  const storedUser = localStorage.getItem("usuarioActual");
+  if (storedUser) {
+    usuarioActual = JSON.parse(storedUser);
+    mostrarContenido();
+  } else {
+    mostrarLogin();
+  }
+};
   </script>
 </body>
 </html>
