@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tienda Aceite de Orégano</title>
+  <style>
+    :root {
+        --primary-color: #4CAF50; /* Un verde agradable */
+        --primary-dark: #388E3C;
+        --secondary-color: #2196F3; /* Azul para acciones secundarias */
+        --danger-color: #f44336;
+        --text-color: #333;
+        --light-bg: #f5f5f5;
+        --card-bg: #ffffff;
+        --border-color: #e0e0e0;
+        --shadow-light: rgba(0, 0, 0, 0.08);
+        --shadow-medium: rgba(0, 0, 0, 0.15);
+    }
+
+    body {
+        margin: 0;
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* Fuentes más modernas y comunes */
+        background: url('https://images.unsplash.com/photo-1616628182506-68f5f90b88d0?auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed; /* Imagen de fondo con mayor resolución */
+        background-size: cover;
+        color: var(--text-color);
+        line-height: 1.6;
+    }
+
+    /* Contenedores generales */
+    nav, section {
+        background-color: var(--card-bg); /* Fondo blanco para secciones */
+        margin: 20px auto; /* Centrar secciones */
+        padding: 25px;
+        border-radius: 12px; /* Esquinas más suaves */
+        box-shadow: 0 4px 15px var(--shadow-medium); /* Sombra más pronunciada para profundidad */
+        max-width: 900px; /* Ancho máximo para legibilidad del contenido */
+    }
+
+    nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 25px;
+        background-color: var(--card-bg);
+        box-shadow: 0 2px 8px var(--shadow-light);
+    }
+
+    .nav-info {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    /* Encabezados */
+    h2 {
+        text-align: center;
+        color: var(--primary-dark);
+        margin-bottom: 30px;
+        font-size: 2em;
+        position: relative;
+    }
+    h2::after { /* Línea decorativa debajo del título */
+        content: '';
+        display: block;
+        width: 60px;
+        height: 3px;
+        background: var(--primary-color);
+        margin: 10px auto 0;
+        border-radius: 2px;
+    }
+
+    /* Tarjetas de Producto */
+    #listaProductos {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Grid responsivo */
+        gap: 25px; /* Espaciado entre tarjetas */
+    }
+
+    .producto {
+        background: var(--card-bg);
+        border-radius: 10px;
+        box-shadow: 0 2px 10px var(--shadow-light);
+        padding: 20px;
+        display: flex;
+        flex-direction: column; /* Apilar información y botón */
+        justify-content: space-between;
+        align-items: flex-start; /* Alinear texto al inicio */
+        transition: transform 0.2s ease, box-shadow 0.2s ease; /* Efecto suave al pasar el ratón */
+    }
+    .producto:hover {
+        transform: translateY(-5px); /* Levantar ligeramente */
+        box-shadow: 0 6px 20px var(--shadow-medium); /* Sombra más fuerte al pasar el ratón */
+    }
+
+    .producto-info {
+        width: 100%;
+        margin-bottom: 15px; /* Espacio antes del botón */
+    }
+    .producto-nombre {
+        font-weight: 700;
+        font-size: 1.3em;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+    .producto-precio {
+        color: var(--primary-color);
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+
+    /* Botones */
+    button, .btn-secondary-link { /* Clase añadida para enlaces que parecen botones */
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px; /* Ligeramente más redondeados */
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        transition: background-color 0.3s ease, transform 0.1s ease;
+        display: inline-block; /* Para el botón-enlace */
+        text-decoration: none; /* Para el botón-enlace */
+        text-align: center;
+    }
+    button:active { /* Efecto al hacer click */
+        transform: scale(0.98);
+    }
+
+    .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+        width: 100%; /* Ancho completo para botones de tarjeta de producto */
+    }
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .btn-secondary {
+        background-color: var(--secondary-color);
+        color: white;
+    }
+    .btn-secondary:hover {
+        background-color: #1976D2; /* Azul más oscuro */
+    }
+
+    .btn-secondary-link { /* Estilo para etiquetas <a> que actúan como botones secundarios */
+        background-color: var(--secondary-color);
+        color: white;
+    }
+    .btn-secondary-link:hover {
+        background-color: #1976D2;
+    }
+
+    .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #D32F2F; /* Rojo más oscuro */
+    }
+
+    /* Entradas de Texto (Inputs) */
+    input[type="email"],
+    input[type="password"],
+    input[type="text"],
+    input[type="tel"] {
+        padding: 12px;
+        width: calc(100% - 24px); /* Considerar el padding en el ancho */
+        margin: 10px 0;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 1em;
+        box-sizing: border-box; /* Incluir padding y border en el ancho */
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    input:focus { /* Efecto al enfocar un input */
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+    }
+
+    /* Formularios */
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px; /* Espacio entre elementos del formulario */
+    }
+
+    /* Carrito Específico */
+    #itemsCarrito {
+        margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 15px;
+        background-color: var(--light-bg); /* Fondo ligeramente diferente para el carrito */
+    }
+
+    .item-carrito {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px dashed var(--border-color); /* Separador más suave */
+    }
+    .item-carrito:last-child {
+        border-bottom: none; /* Sin borde en el último elemento */
+    }
+
+    .carrito-total {
+        margin-top: 20px;
+        font-weight: bold;
+        font-size: 1.2em;
+        text-align: right;
+        padding-right: 10px;
+        color: var(--primary-dark);
+    }
+
+    /* Media Queries para Responsividad (adaptación a diferentes tamaños de pantalla) */
+    @media (max-width: 768px) {
+        nav, section {
+            margin: 10px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        nav {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .nav-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .btn-secondary-link {
+            margin-left: 0 !important; /* Anular estilo inline */
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 0.95em;
+        }
+        input {
+            padding: 10px;
+        }
+        #listaProductos {
+            grid-template-columns: 1fr; /* Apilar productos en pantallas pequeñas */
+        }
+    }
+  </style>
+</head>
+<body>
+
+  <nav id="barraNav">
+    <div class="nav-info">
+      <span id="usuarioInfo"></span>
+      <button id="btnRegistroVisitante" class="btn-secondary" onclick="mostrarRegistro()" style="display:none">Registrarse</button>
+    </div>
+    <button id="cerrarSesion" class="btn-danger" onclick="cerrarSesion()" style="display:none">Cerrar Sesión</button>
+  </nav>
+
+  <section id="login">
+    <h2>Iniciar Sesión</h2>
+    <form id="formLogin">
+      <input type="email" id="loginCorreo" placeholder="Correo electrónico" required> <input type="password" id="loginContrasena" placeholder="Contraseña" required>
+      <button class="btn-primary" type="submit">Entrar</button>
+      <button type="button" class="btn-secondary" onclick="mostrarRegistro()">¿No tienes cuenta? Regístrate</button> </form>
+  </section>
+
+  <section id="registro" style="display:none">
+    <h2>Registro de Usuario</h2>
+    <form id="formRegistro">
+      <input type="text" id="nombre" placeholder="Nombre completo" required>
+      <input type="tel" id="telefono" placeholder="Número de Celular" required>
+      <input type="email" id="correo" placeholder="Correo electrónico" required>
+      <input type="text" id="direccion" placeholder="Dirección de envío" required>
+      <input type="password" id="contrasena" placeholder="Contraseña (mín. 6 caracteres)" required> <button class="btn-primary" type="submit">Crear Cuenta</button>
+      <button type="button" class="btn-secondary" onclick="mostrarLogin()">Ya tengo una cuenta</button> </form>
+  </section>
+
+  <section id="productos" style="display:none">
+    <h2>Nuestros Aceites de Orégano</h2> <div id="listaProductos"></div>
+  </section>
+
+  <section id="carrito" style="display:none">
+    <h2>Tu Pedido Actual</h2> <div id="itemsCarrito"></div>
+    <div class="carrito-total">Total a pagar: Bs <span id="totalCarrito">0.00</span></div>
+    <input type="text" id="nombreCliente" placeholder="Tu nombre para el pedido" required> <button id="confirmarCompra" class="btn-primary">Confirmar Compra por WhatsApp</button> </section>
+
+  <script>
+    let usuarioActual = null;
+    let carrito = [];
+
+    // Función para mostrar la sección de login
+    function mostrarLogin() {
+      document.getElementById("login").style.display = "block";
+      document.getElementById("registro").style.display = "none";
+      document.getElementById("productos").style.display = "none";
+      document.getElementById("carrito").style.display = "none";
+      document.getElementById("barraNav").style.display = "none";
+      document.getElementById("btnRegistroVisitante").style.display = "block";
+    }
+
+    // Función para mostrar la sección de registro
+    function mostrarRegistro() {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("registro").style.display = "block";
+      document.getElementById("productos").style.display = "none";
+      document.getElementById("carrito").style.display = "none";
+      document.getElementById("barraNav").style.display = "none";
+      document.getElementById("btnRegistroVisitante").style.display = "none"; // Ocultar si ya está registrándose
+    }
+
+    // Función para mostrar el contenido principal (productos y carrito)
+    function mostrarContenido() {
+      document.getElementById("login").style.display = "none";
+      document.getElementById("registro").style.display = "none";
+      document.getElementById("productos").style.display = "block";
+      document.getElementById("carrito").style.display = "block";
+      document.getElementById("barraNav").style.display = "flex"; // Mostrar barra de navegación
+      document.getElementById("usuarioInfo").textContent = "Bienvenido, " + usuarioActual.nombre;
+      document.getElementById("cerrarSesion").style.display = "inline";
+      document.getElementById("btnRegistroVisitante").style.display = "none"; // Ocultar para usuarios logueados
+
+      if (usuarioActual && usuarioActual.es_admin) {
+          const existingAdminBtn = document.querySelector('.btn-secondary-link.admin-btn');
+          if (!existingAdminBtn) { // Evita añadir el botón múltiples veces
+              const btnAdmin = document.createElement("a"); // Cambiado a <a>
+              btnAdmin.href = "panel_admin.php";
+              btnAdmin.textContent = "Panel de Administración"; // Texto más descriptivo
+              btnAdmin.className = "btn-secondary-link admin-btn"; // Nueva clase para estilo e identificación
+              btnAdmin.style.marginLeft = "15px";
+              document.getElementById("barraNav").appendChild(btnAdmin);
+          }
+      } else {
+        const existingAdminBtn = document.querySelector('.btn-secondary-link.admin-btn');
+        if (existingAdminBtn) {
+            existingAdminBtn.remove(); // Asegurarse de removerlo si el usuario no es admin
+        }
+      }
+      obtenerProductos();
+    }
+
+    // Cerrar sesión
+    function cerrarSesion() {
+      usuarioActual = null;
+      localStorage.removeItem("usuarioActual");
+      carrito = []; // Limpiar carrito al cerrar sesión
+      renderizarCarrito(); // Actualizar la vista del carrito
+      const adminBtn = document.querySelector('.admin-btn');
+      if (adminBtn) adminBtn.remove(); // Remover el botón de admin
+      document.getElementById("cerrarSesion").style.display = "none"; // Ocultar botón de cerrar sesión
+      mostrarLogin(); // Volver a la pantalla de login
+    }
+
+    // Manejar el envío del formulario de registro
+    document.getElementById("formRegistro").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const nombre = document.getElementById("nombre").value;
+      const telefono = document.getElementById("telefono").value;
+      const correo = document.getElementById("correo").value;
+      const direccion = document.getElementById("direccion").value;
+      const contrasena = document.getElementById("contrasena").value;
+
+      const res = await fetch("registrar_usuario.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, telefono, correo, direccion, contrasena })
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        alert("¡Registro exitoso! Ya puedes iniciar sesión.");
+        mostrarLogin();
+      } else {
+        alert("Error en el registro: " + json.error);
+      }
+    });
+
+    // Manejar el envío del formulario de login
+    document.getElementById("formLogin").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const correo = document.getElementById("loginCorreo").value;
+      const contrasena = document.getElementById("loginContrasena").value;
+
+      const res = await fetch("login.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo, contrasena })
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        usuarioActual = json.usuario;
+        localStorage.setItem("usuarioActual", JSON.stringify(usuarioActual)); // Guardar en localStorage
+        mostrarContenido();
+      } else {
+        alert("Error al iniciar sesión: " + json.error);
+      }
+    });
+
+    // Obtener productos desde el servidor
+    async function obtenerProductos() {
+      const res = await fetch("obtener_productos.php");
+      const productos = await res.json();
+      const listaProductosDiv = document.getElementById("listaProductos");
+      listaProductosDiv.innerHTML = ""; // Limpiar antes de añadir
+
+      if (productos.error) {
+        listaProductosDiv.innerHTML = `<p style="text-align: center; color: var(--danger-color);">Error al cargar productos: ${productos.error}</p>`;
+        return;
+      }
+
+      productos.forEach(producto => {
+        const productoDiv = document.createElement("div");
+        productoDiv.className = "producto";
+        productoDiv.innerHTML = `
+          <div class="producto-info">
+            <div class="producto-nombre">${producto.nombre}</div>
+            <div class="producto-precio">Bs ${producto.precio.toFixed(2)}</div>
+          </div>
+          <button class="btn-primary" onclick="agregarAlCarrito(${producto.id}, '${producto.nombre}', ${producto.precio})">Agregar al Carrito</button>
+        `;
+        listaProductosDiv.appendChild(productoDiv);
+      });
+    }
+
+    // Añadir producto al carrito
+    function agregarAlCarrito(id, nombre, precio) {
+      const itemExistente = carrito.find(item => item.id === id);
+      if (itemExistente) {
+        itemExistente.cantidad++;
+      } else {
+        carrito.push({ id, nombre, precio, cantidad: 1 });
+      }
+      renderizarCarrito();
+      alert(`${nombre} añadido al carrito.`); // Feedback visual
+    }
+
+    // Renderizar (dibujar) el carrito
+    function renderizarCarrito() {
+      const cont = document.getElementById("itemsCarrito");
+      cont.innerHTML = "";
+      let total = 0;
+      carrito.forEach(item => {
+        const subtotal = item.precio * item.cantidad;
+        total += subtotal;
+        cont.innerHTML += `<div class="item-carrito">${item.nombre} x ${item.cantidad} = Bs ${subtotal.toFixed(2)}</div>`;
+      });
+      document.getElementById("totalCarrito").innerText = total.toFixed(2);
+    }
+
+    // Confirmar la compra (Enviar pedido)
+    document.getElementById("confirmarCompra").onclick = async function () {
+      if (!usuarioActual) return alert("Inicia sesión para confirmar tu compra");
+      if (carrito.length === 0) return alert("Tu carrito está vacío");
+
+      const nombreCliente = document.getElementById("nombreCliente").value.trim();
+      if (!nombreCliente) return alert("Escribe tu nombre para continuar");
+
+      const total = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+
+      const pedido = {
+        total: total,
+        nombreCliente: nombreCliente,
+        productos: carrito
+      };
+
+      const confirmBtn = this; // Referencia al botón que fue clickeado
+      const originalText = confirmBtn.textContent; // Guardar el texto original del botón
+      confirmBtn.disabled = true; // Deshabilitar el botón
+      confirmBtn.textContent = "Procesando..."; // Mostrar estado de procesamiento
+
+      const res = await fetch("guardar_pedido.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pedido)
+      });
+
+      const json = await res.json();
+
+      // Restablecer el estado del botón, sin importar el éxito o el fracaso
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = originalText;
+
+      if (json.success) {
+        alert("¡Pedido realizado con éxito! Serás redirigido a WhatsApp para confirmar.");
+        carrito = [];
+        renderizarCarrito();
+        document.getElementById("nombreCliente").value = "";
+        window.location.href = json.whatsappLink;
+      } else {
+        alert("Error al guardar pedido: " + json.error + ". Por favor, inténtalo de nuevo."); // Mensaje de error más detallado
+      }
+    };
+
+    // Al cargar la página, verificar si hay una sesión activa
+    window.onload = function () {
+      const storedUser = localStorage.getItem("usuarioActual");
+      if (storedUser) {
+        usuarioActual = JSON.parse(storedUser);
+        mostrarContenido();
+      } else {
+        mostrarLogin();
+      }
+    };
+  </script>
+</body>
+</html>
