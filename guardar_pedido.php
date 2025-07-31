@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-require_once 'conexion.php';
+require_once 'conexion.php'; // Incluye la conexión PDO
 session_start();
 
 if (!isset($_SESSION['usuario'])) {
@@ -16,51 +16,82 @@ if (!isset($datos['productos']) || !is_array($datos['productos']) || empty($dato
     exit;
 }
 
+if (!isset($datos['total']) || !isset($datos['nombreCliente'])) {
+    echo json_encode(["success" => false, "error" => "Datos de pedido incompletos (total o nombreCliente)."]);
+    exit;
+}
+
 $total = floatval($datos['total']);
-$nombreCliente = $conn->real_escape_string($datos['nombreCliente']);
+$nombreCliente = trim($datos['nombreCliente']); // trim para quitar espacios, PDO maneja la sanitización.
 
 // Iniciar transacción
-$conn->begin_transaction();
+// Esto asegura que si una parte de la operación falla, todas se deshacen.
+$conn->beginTransaction();
 
 try {
-    // 1. Insertar en pedidos
-    $stmt = $conn->prepare("INSERT INTO pedidos (usuario_id, cliente_nombre, total, estado, fecha) VALUES (?, ?, ?, 'confirmado', NOW())");
-    $stmt->bind_param("isd", $_SESSION['usuario']['id'], $nombreCliente, $total);
+    // 1. Insertar en la tabla 'pedidos'
+    // Usamos CURRENT_TIMESTAMP para la fecha en PostgreSQL
+    // Aseguramos el esquema 'tienda_virtual'
+    $stmt = $conn->prepare("INSERT INTO tienda_virtual.pedidos (usuario_id, cliente_nombre, total, estado, fecha) VALUES (?, ?, ?, 'confirmado', CURRENT_TIMESTAMP)");
     
-    if (!$stmt->execute()) throw new Exception("Error al guardar pedido: " . $stmt->error);
+    // Ejecutar la inserción con los parámetros
+    $stmt->execute([
+        $_SESSION['usuario']['id'],
+        $nombreCliente,
+        $total
+    ]);
     
-    $pedidoId = $conn->insert_id;
-    $stmt->close();
+    // Obtener el ID del pedido recién insertado.
+    // Para PostgreSQL, necesitas especificar el nombre de la secuencia.
+    // El nombre de la secuencia suele ser: nombre_tabla_columna_id_seq
+    // En tu caso, para la tabla 'pedidos' y columna 'id', con el esquema 'tienda_virtual',
+    // lo más probable es que sea 'tienda_virtual.pedidos_id_seq'.
+    $pedidoId = $conn->lastInsertId('tienda_virtual.pedidos_id_seq');
+    $stmt = null; // Cierra el statement (opcional, pero buena práctica)
 
-    // 2. Insertar en pedido_detalles
-    $stmtDetalle = $conn->prepare("INSERT INTO pedido_detalles (pedido_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)");
+    // 2. Insertar en la tabla 'pedido_detalles'
+    // Aseguramos el esquema 'tienda_virtual'
+    $stmtDetalle = $conn->prepare("INSERT INTO tienda_virtual.pedido_detalles (pedido_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)");
     
     foreach ($datos['productos'] as $producto) {
         $productoId = intval($producto['id']);
         $cantidad = intval($producto['cantidad']);
         $precio = floatval($producto['precio']);
-        $stmtDetalle->bind_param("iiid", $pedidoId, $productoId, $cantidad, $precio);
-        if (!$stmtDetalle->execute()) throw new Exception("Error al guardar detalle: " . $stmtDetalle->error);
+        
+        // Ejecutar la inserción de cada detalle
+        $stmtDetalle->execute([
+            $pedidoId,
+            $productoId,
+            $cantidad,
+            $precio
+        ]);
     }
 
-    $stmtDetalle->close();
+    $stmtDetalle = null; // Cierra el statement
+
+    // Si todo fue exitoso, confirmar la transacción
     $conn->commit();
 
-    // 3. Enlace WhatsApp
+    // 3. Generar enlace de WhatsApp (si aplica)
     $numeroAdmin = "59178352333"; // Tu número con código de país (sin +)
     $mensaje = "Hola, quiero confirmar mi pedido N°$pedidoId por Bs $total - $nombreCliente";
     $whatsappLink = "https://wa.me/$numeroAdmin?text=" . urlencode($mensaje);
 
-    // 4. Enviar respuesta exitosa
     echo json_encode([
         "success" => true,
-        "pedidoId" => $pedidoId,
+        "message" => "Pedido realizado con éxito.",
         "whatsappLink" => $whatsappLink
     ]);
-} catch (Exception $e) {
-    $conn->rollback();
-    echo json_encode(["success" => false, "error" => $e->getMessage()]);
-}
 
-$conn->close();
+} catch (PDOException $e) {
+    // Si algo falla, revertir la transacción para no dejar datos incompletos
+    $conn->rollBack();
+    http_response_code(500);
+    echo json_encode(["success" => false, "error" => "Error al procesar el pedido: " . $e->getMessage()]);
+} catch (Exception $e) {
+    // Capturar otras excepciones si las hubiera (ej. validaciones, errores lógicos)
+    $conn->rollBack(); // También revertir si hay un error no-PDO
+    http_response_code(500);
+    echo json_encode(["success" => false, "error" => "Error inesperado: " . $e->getMessage()]);
+}
 ?>

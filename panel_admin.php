@@ -5,10 +5,11 @@ if (!isset($_SESSION['usuario']) || $_SESSION['usuario']['es_admin'] != 1) {
     exit;
 }
 
-require_once 'conexion.php';
+require_once 'conexion.php'; // Incluye la conexión PDO
 
 // Obtener el estado de filtro de la URL, por defecto 'pendiente'
-$estado_filtro = isset($_GET['estado']) ? $conn->real_escape_string($_GET['estado']) : 'pendiente';
+// No necesitamos real_escape_string aquí, PDO lo maneja con prepared statements
+$estado_filtro = isset($_GET['estado']) ? trim($_GET['estado']) : 'pendiente';
 
 // Lista de estados válidos para evitar inyección SQL directa
 $estados_validos = ['pendiente', 'confirmado', 'entregado', 'negado'];
@@ -17,255 +18,226 @@ if (!in_array($estado_filtro, $estados_validos)) {
     $estado_filtro = 'pendiente'; // Si el estado no es válido, vuelve al predeterminado
 }
 
-// Obtener pedidos con información del usuario, filtrando por estado
-$sql = "SELECT p.id, u.nombre AS cliente, p.estado, p.fecha, p.total
-        FROM pedidos p
-        JOIN usuarios u ON p.usuario_id = u.id
-        WHERE p.estado = ?
-        ORDER BY p.fecha DESC";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $estado_filtro); // 's' para string
-$stmt->execute();
-$resultado = $stmt->get_result(); // Obtener el resultado de la consulta
+$pedidos = []; // Array para almacenar los pedidos
 
-// Verificar si la consulta fue exitosa
-if (!$resultado) {
-    die("Error al obtener pedidos: " . $conn->error);
+try {
+    // Obtener pedidos con información del usuario, filtrando por estado
+    // Usamos el esquema 'tienda_virtual' para las tablas 'pedidos' y 'usuarios'
+    $sql = "SELECT p.id, u.nombre AS cliente, p.estado, p.fecha, p.total
+            FROM tienda_virtual.pedidos p
+            JOIN tienda_virtual.usuarios u ON p.usuario_id = u.id
+            WHERE p.estado = ?
+            ORDER BY p.fecha DESC";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$estado_filtro]); // Ejecutar la consulta con el estado_filtro
+
+    // Obtener todos los resultados
+    $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (PDOException $e) {
+    // Capturar errores de la base de datos y mostrar un mensaje
+    // En un entorno de producción, solo registrarías el error y mostrarías un mensaje genérico.
+    echo "<p style='color: red;'>Error en la base de datos: " . htmlspecialchars($e->getMessage()) . "</p>";
+    $pedidos = []; // Asegurarse de que $pedidos es un array vacío en caso de error
 }
-?>
 
+// No necesitas $conn->close() con PDO, la conexión se cierra automáticamente al final del script
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración - Tienda Orégano</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Administración</title>
   <style>
-    /* Definir variables de color para consistencia con index.html */
+    /* Estilos CSS (puedes mantener los que ya tenías o mejorarlos) */
     :root {
-        --primary-color: #4CAF50; /* Verde principal */
-        --primary-dark: #388E3C;
-        --secondary-color: #2196F3; /* Azul para botones secundarios/links */
-        --danger-color: #f44336; /* Rojo para acciones peligrosas */
-        --text-color: #333;
-        --light-bg: #f5f5f5; /* Fondo claro general */
-        --card-bg: #ffffff; /* Fondo para tarjetas/secciones */
-        --border-color: #e0e0e0; /* Color de borde suave */
-        --shadow-light: rgba(0, 0, 0, 0.08); /* Sombra ligera */
-        --shadow-medium: rgba(0, 0, 0, 0.15); /* Sombra media */
+      --primary-color: #4CAF50; /* Un verde agradable */
+      --primary-dark: #388E3C;
+      --secondary-color: #2196F3; /* Azul para acciones secundarias */
+      --danger-color: #f44336;
+      --text-color: #333;
+      --light-bg: #f5f5f5;
+      --card-bg: #ffffff;
+      --border-color: #e0e0e0;
+      --shadow-light: rgba(0, 0, 0, 0.08);
+      --shadow-medium: rgba(0, 0, 0, 0.15);
     }
 
     body {
       font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--light-bg); /* Usar la variable de fondo claro */
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      line-height: 1.6;
       margin: 0;
       padding: 20px;
-      color: var(--text-color);
     }
-    h2 {
-      text-align: center;
-      color: var(--primary-dark); /* Color de título consistente */
-      margin-bottom: 30px;
-      font-size: 2em;
-      position: relative;
-    }
-    h2::after { /* Línea decorativa debajo del título, como en index.html */
-        content: '';
-        display: block;
-        width: 60px;
-        height: 3px;
-        background: var(--primary-color);
-        margin: 10px auto 0;
-        border-radius: 2px;
-    }
-    .container { /* Contenedor principal para el panel */
-      max-width: 1000px; /* Aumentar el ancho para la tabla */
+
+    .container {
+      max-width: 1200px;
       margin: 20px auto;
       background: var(--card-bg);
       padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px var(--shadow-medium); /* Sombra más pronunciada */
+      border-radius: 10px;
+      box-shadow: 0 4px 15px var(--shadow-medium);
     }
-    /* Estilos para los botones de filtro */
-    .filter-buttons {
-        text-align: center;
-        margin-bottom: 25px;
-        display: flex; /* Para que estén en fila */
-        justify-content: center; /* Centrar los botones */
-        flex-wrap: wrap; /* Envolver en pantallas pequeñas */
-        gap: 10px; /* Espacio entre botones */
+
+    h1 {
+      text-align: center;
+      color: var(--primary-dark);
+      margin-bottom: 30px;
     }
-    .filter-btn {
-        display: inline-block;
-        padding: 10px 20px;
-        border: 1px solid var(--primary-color);
-        border-radius: 25px; /* Más redondeados como pestañas */
-        background-color: transparent;
-        color: var(--primary-color);
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
+
+    .filter-section {
+      text-align: center;
+      margin-bottom: 20px;
     }
-    .filter-btn:hover {
-        background-color: rgba(76, 175, 80, 0.1); /* Ligero fondo al pasar el ratón */
-        color: var(--primary-dark);
+
+    .filter-section label {
+      font-weight: bold;
+      margin-right: 10px;
     }
-    .filter-btn.active {
-        background-color: var(--primary-color); /* Color de fondo para el activo */
-        color: white;
-        border-color: var(--primary-color);
-        box-shadow: 0 2px 8px var(--shadow-light);
-    }
-    .filter-btn.active:hover {
-        background-color: var(--primary-dark); /* Un poco más oscuro al pasar el ratón en el activo */
-        color: white;
+
+    .filter-section select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+      font-size: 1rem;
+      background-color: white;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 20px;
-      font-size: 0.95em;
-    }
-    th, td {
-      padding: 15px;
-      border-bottom: 1px solid var(--border-color); /* Borde más suave */
-      text-align: left;
-    }
-    th {
-      background-color: var(--primary-color); /* Encabezados de tabla con color primario */
-      color: white;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    tr:last-child td {
-      border-bottom: none; /* Eliminar borde inferior de la última fila */
-    }
-    tr:hover {
-      background-color: rgba(76, 175, 80, 0.05); /* Ligero hover en las filas */
-    }
-    select {
-      padding: 8px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background-color: white;
-      font-size: 0.9em;
-      min-width: 120px; /* Asegurar un ancho mínimo */
-    }
-    button.btn-confirmar { /* Botón de actualizar */
-      padding: 10px 18px;
-      border: none;
+      box-shadow: 0 2px 10px var(--shadow-light);
       border-radius: 8px;
-      background-color: var(--secondary-color); /* Usar color secundario */
-      color: white;
-      cursor: pointer;
-      font-size: 0.9em;
-      font-weight: 600;
-      transition: background-color 0.3s ease, transform 0.1s ease;
-    }
-    button.btn-confirmar:hover {
-      background-color: #1976D2; /* Azul más oscuro al pasar el ratón */
-    }
-    button.btn-confirmar:active {
-        transform: scale(0.98);
+      overflow: hidden; /* Asegura que el border-radius afecte a los bordes de la tabla */
     }
 
-    .btn-back-home { /* Estilo para el botón de volver al inicio */
-      display: inline-block;
-      margin-top: 25px;
-      padding: 12px 25px;
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
       background-color: var(--primary-color);
       color: white;
-      text-decoration: none;
-      border-radius: 8px;
-      font-weight: 600;
-      transition: background-color 0.3s ease, transform 0.1s ease;
-    }
-    .btn-back-home:hover {
-      background-color: var(--primary-dark);
-      transform: translateY(-2px);
+      font-weight: bold;
+      text-transform: uppercase;
     }
 
-    /* Responsividad básica para el panel de administración */
-    @media (max-width: 768px) {
-      body {
-        padding: 10px;
-      }
-      .container {
-        margin: 10px auto;
-        padding: 15px;
-        border-radius: 8px;
-      }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    tr:hover {
+      background-color: #f1f1f1;
+    }
+
+    .btn-confirmar, .btn-back-home {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background-color 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-confirmar:hover {
+      background-color: #1976D2; /* Un azul más oscuro */
+    }
+
+    .btn-back-home {
+      margin-top: 20px;
+      background-color: var(--primary-dark);
+    }
+
+    .btn-back-home:hover {
+      background-color: #2e7d32; /* Un verde más oscuro */
+    }
+
+    select.estado-select {
+        width: 100%;
+        padding: 5px;
+        border-radius: 3px;
+        border: 1px solid #ccc;
+    }
+
+    /* Estilos para hacer la tabla responsive */
+    @media screen and (max-width: 768px) {
       table, thead, tbody, th, td, tr {
-        display: block; /* Apilar elementos de tabla */
+        display: block;
       }
+
       thead tr {
         position: absolute;
         top: -9999px;
         left: -9999px;
       }
+
       tr {
         margin-bottom: 15px;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        background-color: var(--card-bg);
+        overflow: hidden;
       }
+
       td {
         border: none;
+        border-bottom: 1px solid var(--border-color);
         position: relative;
-        padding-left: 50%; /* Espacio para la "etiqueta" del encabezado */
+        padding-left: 50%;
         text-align: right;
       }
+
       td:before {
-        content: attr(data-label); /* Usar el atributo data-label para mostrar el encabezado */
         position: absolute;
-        left: 10px;
+        top: 0;
+        left: 6px;
         width: 45%;
         padding-right: 10px;
         white-space: nowrap;
         text-align: left;
         font-weight: bold;
+        color: var(--primary-dark);
       }
-      td:last-child {
-        border-bottom: none;
-      }
-      select, button.btn-confirmar {
-        width: 100%;
-        box-sizing: border-box; /* Incluir padding y border en el ancho */
-        margin-top: 5px;
-      }
-      .btn-back-home {
-        width: calc(100% - 20px); /* Ajustar al ancho del contenedor */
-        box-sizing: border-box;
-        text-align: center;
-      }
-      .filter-buttons {
-          flex-direction: column; /* Apilar botones de filtro en móviles */
-          align-items: center;
-      }
-      .filter-btn {
-          width: 80%; /* Ancho más grande para botones de filtro en móviles */
-          box-sizing: border-box;
-      }
+
+      td:nth-of-type(1):before { content: "ID:"; }
+      td:nth-of-type(2):before { content: "Cliente:"; }
+      td:nth-of-type(3):before { content: "Estado:"; }
+      td:nth-of-type(4):before { content: "Fecha:"; }
+      td:nth-of-type(5):before { content: "Total:"; }
+      td:nth-of-type(6):before { content: "Acción:"; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Panel de Administración de Pedidos</h2>
+    <h1>Panel de Administración de Pedidos</h1>
 
-    <div class="filter-buttons">
-        <a href="panel_admin.php?estado=pendiente" class="filter-btn <?= $estado_filtro == 'pendiente' ? 'active' : '' ?>">Pendientes</a>
-        <a href="panel_admin.php?estado=confirmado" class="filter-btn <?= $estado_filtro == 'confirmado' ? 'active' : '' ?>">Confirmados</a>
-        <a href="panel_admin.php?estado=entregado" class="filter-btn <?= $estado_filtro == 'entregado' ? 'active' : '' ?>">Entregados</a>
-        <a href="panel_admin.php?estado=negado" class="filter-btn <?= $estado_filtro == 'negado' ? 'active' : '' ?>">Negados/Cancelados</a>
+    <div class="filter-section">
+      <label for="filtroEstado">Filtrar por Estado:</label>
+      <select id="filtroEstado" onchange="window.location.href='panel_admin.php?estado=' + this.value;">
+        <option value="pendiente" <?= $estado_filtro == 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
+        <option value="confirmado" <?= $estado_filtro == 'confirmado' ? 'selected' : '' ?>>Confirmado</option>
+        <option value="entregado" <?= $estado_filtro == 'entregado' ? 'selected' : '' ?>>Entregado</option>
+        <option value="negado" <?= $estado_filtro == 'negado' ? 'selected' : '' ?>>Negado</option>
+      </select>
     </div>
 
-    <?php if ($resultado->num_rows > 0): ?>
+    <?php if (!empty($pedidos)): ?>
     <table>
       <thead>
         <tr>
-          <th>ID Pedido</th>
+          <th>ID</th>
           <th>Cliente</th>
           <th>Estado</th>
           <th>Fecha</th>
@@ -274,24 +246,25 @@ if (!$resultado) {
         </tr>
       </thead>
       <tbody>
-        <?php while ($row = $resultado->fetch_assoc()): ?>
+        <?php foreach ($pedidos as $row): ?>
           <tr>
-            <td data-label="ID Pedido"><?= htmlspecialchars($row['id']) ?></td>
+            <td data-label="ID"><?= htmlspecialchars($row['id']) ?></td>
             <td data-label="Cliente"><?= htmlspecialchars($row['cliente']) ?></td>
             <td data-label="Estado">
-              <select id="estado_<?= htmlspecialchars($row['id']) ?>">
-                <option value="pendiente" <?= $row['estado'] === 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
-                <option value="confirmado" <?= $row['estado'] === 'confirmado' ? 'selected' : '' ?>>Confirmado</option>
-                <option value="entregado" <?= $row['estado'] === 'entregado' ? 'selected' : '' ?>>Entregado</option>
-                <option value="negado" <?= $row['estado'] === 'negado' ? 'selected' : '' ?>>Negado</option> </select>
+              <select id="estado_<?= htmlspecialchars($row['id']) ?>" class="estado-select">
+                <option value="pendiente" <?= $row['estado'] == 'pendiente' ? 'selected' : '' ?>>Pendiente</option>
+                <option value="confirmado" <?= $row['estado'] == 'confirmado' ? 'selected' : '' ?>>Confirmado</option>
+                <option value="entregado" <?= $row['estado'] == 'entregado' ? 'selected' : '' ?>>Entregado</option>
+                <option value="negado" <?= $row['estado'] == 'negado' ? 'selected' : '' ?>>Negado</option>
+              </select>
             </td>
             <td data-label="Fecha"><?= htmlspecialchars($row['fecha']) ?></td>
-            <td data-label="Total (Bs)"><?= number_format($row['total'], 2) ?></td>
+            <td data-label="Total (Bs)"><?= number_format(floatval($row['total']), 2) ?></td>
             <td data-label="Acción">
               <button class="btn-confirmar" onclick="actualizarEstado(<?= htmlspecialchars($row['id']) ?>)">Actualizar</button>
             </td>
           </tr>
-        <?php endwhile; ?>
+        <?php endforeach; ?>
       </tbody>
     </table>
     <?php else: ?>
@@ -321,14 +294,10 @@ if (!$resultado) {
         }
       })
       .catch(error => {
-        console.error("Error en la solicitud:", error);
-        alert("Ocurrió un error al intentar actualizar el estado.");
+        console.error('Error al enviar la solicitud:', error);
+        alert("Hubo un problema al comunicarse con el servidor.");
       });
     }
   </script>
 </body>
 </html>
-
-<?php
-$conn->close();
-?>
