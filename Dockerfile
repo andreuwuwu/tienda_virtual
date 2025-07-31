@@ -1,28 +1,28 @@
-# Usa una imagen oficial de PHP con Apache (versión 8.2 es una buena opción)
+# Imagen base con PHP 8.2 y Apache
 FROM php:8.2-apache
 
-# Instala las librerías necesarias para PostgreSQL y la extensión PDO_PGSQL
-# 'libpq-dev' es necesario para compilar pdo_pgsql
+# 1. Instala dependencias CRÍTICAS
 RUN apt-get update && \
-    apt-get install -y libpq-dev && \
+    apt-get install -y \
+    libpq-dev \       # Para PostgreSQL
+    git \             # Para composer (opcional)
+    unzip && \        # Para descomprimir paquetes
     docker-php-ext-install pdo pdo_pgsql && \
+    a2enmod rewrite && \  # Para URLs amigables
     rm -rf /var/lib/apt/lists/*
 
-# Copia todos los archivos de tu aplicación (la carpeta donde está tu Dockerfile)
-# al directorio raíz de Apache dentro del contenedor.
+# 2. Copia la aplicación (excluyendo lo innecesario)
 COPY . /var/www/html/
 
-# Establece los permisos correctos para los archivos de la aplicación
-# Esto es importante para que Apache pueda leer y servir los archivos.
+# 3. Permisos SEGUROS (evita el error 403)
 RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+    find /var/www/html -type d -exec chmod 755 {} \; && \
+    find /var/www/html -type f -exec chmod 644 {} \;
 
-# Opcional: Si usas archivos .htaccess (por ejemplo, para URLs amigables),
-# descomenta la siguiente línea para habilitar el módulo de reescritura de Apache.
-# RUN a2enmod rewrite
-
-# Expone el puerto 80, que es el puerto predeterminado de Apache.
+# 4. Puerto y variables de entorno (las configurarás en Render/Neon)
 EXPOSE 80
-
-# El comando CMD ya viene configurado en la imagen base php:apache para iniciar Apache,
-# así que no necesitas especificar un "Start Command" en Render si lo dejas así.
+ENV DB_HOST="ep-dry-shadow-ac9moc1g-pooler.sa-east-1.aws.neon.tech"
+ENV DB_NAME="neondb"
+ENV DB_USER="neondb_owner"
+ENV DB_PASS="npg_cgvUQXe3CHJ1"
+ENV DB_SSLMODE="require"
